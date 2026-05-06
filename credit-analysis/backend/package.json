@@ -1,0 +1,17 @@
+{
+  "name": "credit-analysis-backend",
+  "version": "1.0.0",
+  "description": "征信分析后端服务",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "pdfjs-dist": "^4.0.379",
+    "tesseract.js": "^5.1.1"
+  }
+}

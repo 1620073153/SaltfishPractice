@@ -1,0 +1,31 @@
+{
+  "rules": [
+    { "minScore": 0,   "maxScore": 549, "banks": [{ "name": "安心小额贷银行", "maxAmount": 50000,  "minAmount": 5000,  "rate": "8.5%", "term": "1-3年", "remark": "适合信用修复期用户，额度较低但审批快" }]},
+    { "minScore": 550, "maxScore": 599, "banks": [
+      { "name": "安心小额贷银行", "maxAmount": 100000, "minAmount": 10000, "rate": "7.8%", "term": "1-3年", "remark": "额度有所提升" },
+      { "name": "阳光担保贷银行", "maxAmount": 80000,  "minAmount": 10000, "rate": "7.2%", "term": "1-5年", "remark": "需提供担保人，利率相对较低" }
+    ]},
+    { "minScore": 600, "maxScore": 649, "banks": [
+      { "name": "招商银行",   "maxAmount": 200000, "minAmount": 20000, "rate": "5.6%", "term": "1-5年",  "remark": "信用贷款，无需抵押" },
+      { "name": "浦发银行",   "maxAmount": 300000, "minAmount": 30000, "rate": "5.8%", "term": "1-5年",  "remark": "公积金缴存用户优先" },
+      { "name": "平安银行",   "maxAmount": 250000, "minAmount": 20000, "rate": "6.0%", "term": "1-3年",  "remark": "审批快速，线上全流程" }
+    ]},
+    { "minScore": 650, "maxScore": 699, "banks": [
+      { "name": "工商银行",   "maxAmount": 500000, "minAmount": 50000, "rate": "4.8%", "term": "1-10年", "remark": "国有大行，利率优惠" },
+      { "name": "建设银行",   "maxAmount": 500000, "minAmount": 50000, "rate": "4.9%", "term": "1-10年", "remark": "房贷客群专享绿色通道" },
+      { "name": "中信银行",   "maxAmount": 400000, "minAmount": 30000, "rate": "5.2%", "term": "1-5年",  "remark": "优质职业客群额外降息" }
+    ]},
+    { "minScore": 700, "maxScore": 749, "banks": [
+      { "name": "中国银行",   "maxAmount": 1000000, "minAmount": 100000, "rate": "4.2%", "term": "1-15年", "remark": "大额低息，适合购房装修" },
+      { "name": "农业银行",   "maxAmount": 800000,  "minAmount": 80000,  "rate": "4.3%", "term": "1-15年", "remark": "三农客群额外优惠" },
+      { "name": "交通银行",   "maxAmount": 800000,  "minAmount": 50000,  "rate": "4.5%", "term": "1-10年", "remark": "VIP 专属客户经理服务" },
+      { "name": "招商银行",   "maxAmount": 600000,  "minAmount": 50000,  "rate": "4.6%", "term": "1-10年", "remark": "金葵花客户可再降息" }
+    ]},
+    { "minScore": 750, "maxScore": 999, "banks": [
+      { "name": "中国银行",   "maxAmount": 3000000, "minAmount": 200000, "rate": "3.8%", "term": "1-20年",  "remark": "私人银行级服务，额度最高" },
+      { "name": "工商银行",   "maxAmount": 3000000, "minAmount": 200000, "rate": "3.9%", "term": "1-20年",  "remark": "尊享绿色通道，最快当天放款" },
+      { "name": "汇丰银行",   "maxAmount": 5000000, "minAmount": 500000, "rate": "3.5%", "term": "1-25年",  "remark": "跨境金融服务，多币种可选" },
+      { "name": "招商银行",   "maxAmount": 2000000, "minAmount": 100000, "rate": "4.0%", "term": "1-20年",  "remark": "私人银行定制方案" }
+    ]}
+  ]
+}
