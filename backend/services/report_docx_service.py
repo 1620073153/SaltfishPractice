@@ -487,23 +487,6 @@ def generate_docx_report(session_data: dict) -> BytesIO:
     _setup_header_footer(section_body, include=True)
 
     # ============================================================
-    # Distribution & Version Page
-    # ============================================================
-    _add_heading_styled(doc, "报告分发与版本控制", level=1)
-    _add_heading_styled(doc, "分发列表", level=2)
-    _create_styled_table(doc, ["序号", "接收人", "部门", "份数"],
-                         [["1", "——", "安全部", "1"],
-                          ["2", "——", "产品部", "1"],
-                          ["3", "——", "合规部", "1"]],
-                         col_widths=[2, 4, 4, 2])
-    _add_para(doc, "", space_before=12, line_spacing=1.0)
-    _add_heading_styled(doc, "版本历史", level=2)
-    _create_styled_table(doc, ["版本", "日期", "修订人", "修订内容"],
-                         [["V1.0", now.strftime("%Y-%m-%d"), "PrimeIceAGI", "初始发布"]],
-                         col_widths=[2, 3.5, 4, 5])
-    _add_page_break(doc)
-
-    # ============================================================
     # TOC Page
     # ============================================================
     _add_para(doc, "目  录", size_pt=18, bold=True,
@@ -547,9 +530,9 @@ def generate_docx_report(session_data: dict) -> BytesIO:
     _add_page_break(doc)
 
     # ============================================================
-    # Chapter 2: Test Overview & Scope
+    # Chapter 2: Test Overview & Data Summary (merged)
     # ============================================================
-    _add_heading_styled(doc, "二、测试概述与范围", level=1)
+    _add_heading_styled(doc, "二、测试概述与数据总览", level=1)
 
     _add_heading_styled(doc, "测试配置", level=2)
     config_rows = [
@@ -570,18 +553,7 @@ def generate_docx_report(session_data: dict) -> BytesIO:
               f"A5类(无法满足特定服务类型安全需求)，共计{coverage_total}个安全子类别。",
               first_line_indent=0.74, space_after=6)
 
-    _add_heading_styled(doc, "排除项", level=2)
-    exclusions = ["物理安全测试", "网络层渗透测试", "社会工程学测试", "DoS/DDoS压力测试"]
-    for e in exclusions:
-        _add_para(doc, f"  - {e}", space_after=3)
-
-    _add_page_break(doc)
-
-    # ============================================================
-    # Chapter 3: Test Data Overview
-    # ============================================================
-    _add_heading_styled(doc, "三、测试数据总览", level=1)
-
+    _add_para(doc, "", space_before=12, line_spacing=1.0)
     _add_heading_styled(doc, "统计汇总", level=2)
     stats_rows = [
         ["总测试轮次", str(total_rounds)],
@@ -591,7 +563,7 @@ def generate_docx_report(session_data: dict) -> BytesIO:
         ["部分突破", str(total_partial)],
         ["综合绕过率", bypass_rate],
     ]
-    _create_styled_table(doc, ["指标", "数值"], stats_rows, col_widths=[6, 6])
+    _create_styled_table(doc, ["指标", "数值"], stats_rows, col_widths=[4, 10])
 
     _add_para(doc, "", space_before=12, line_spacing=1.0)
     _add_heading_styled(doc, "各轮次对比", level=2)
@@ -623,9 +595,8 @@ def generate_docx_report(session_data: dict) -> BytesIO:
 
     if round_rows:
         _create_styled_table(doc, round_headers, round_rows,
-                             col_widths=[1.8, 2.2, 1.8, 2, 2.2, 2.8, 1.8])
+                             col_widths=[2, 2, 2, 2, 2, 2, 2])
 
-    # Trend analysis
     _add_para(doc, "", space_before=12, line_spacing=1.0)
     _add_heading_styled(doc, "趋势分析", level=2)
     if len(rounds) >= 2:
@@ -644,35 +615,41 @@ def generate_docx_report(session_data: dict) -> BytesIO:
     _add_page_break(doc)
 
     # ============================================================
-    # Chapter 4: Typical Bypass Cases
+    # Chapter 3: All Bypass Cases (full content)
     # ============================================================
-    _add_heading_styled(doc, "四、典型绕过案例", level=1)
+    _add_heading_styled(doc, "三、绕过案例详情", level=1)
 
     if not bypassed_cases:
         _add_para(doc, "本次测试未发现有效绕过案例。", first_line_indent=0.74, space_after=12)
     else:
-        for idx, case in enumerate(bypassed_cases[:5]):
+        _add_para(doc,
+                  f"本次测试共发现 {len(bypassed_cases)} 条成功绕过，"
+                  f"以下逐条列出完整攻击提示词与模型响应内容。",
+                  first_line_indent=0.74, space_after=12)
+
+        for idx, case in enumerate(bypassed_cases):
             cat = case.get("category", "未知")
             cat_display = f"{cat} ({_get_subcategory_name(cat)})"
+            concepts = case.get("concepts", [case.get("concept", "—")])
+            concept_str = "、".join(concepts) if concepts else "—"
+            methods = case.get("methods", [case.get("method", "—")])
+            method_str = "、".join(methods) if methods else "—"
+
             _add_heading_styled(doc, f"案例 VULN-{idx+1}", level=2)
 
-            prompt_text = case.get("promptText", "")
-            model_resp = case.get("modelResponse", "")
-            case_rows = [
+            meta_rows = [
                 ["案例编号", f"VULN-{idx+1}"],
                 ["安全类别", cat_display],
-                ["绕过概念", case.get("concept", "—")],
-                ["绕过方法", case.get("method", "—")],
-                ["攻击提示词", (prompt_text[:100] + "...") if len(prompt_text) > 100 else prompt_text],
-                ["模型响应摘要", (model_resp[:100] + "...") if len(model_resp) > 100 else model_resp],
+                ["绕过概念", concept_str],
+                ["绕过方法", method_str],
                 ["裁判理由", case.get("judge_reason", "—")],
                 ["置信度", str(case.get("judge_confidence", "—"))],
             ]
-            case_table = doc.add_table(rows=len(case_rows), cols=2)
-            case_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-            for i, (label, value) in enumerate(case_rows):
-                cl = case_table.rows[i].cells[0]
-                cr = case_table.rows[i].cells[1]
+            meta_table = doc.add_table(rows=len(meta_rows), cols=2)
+            meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            for i, (label, value) in enumerate(meta_rows):
+                cl = meta_table.rows[i].cells[0]
+                cr = meta_table.rows[i].cells[1]
                 cl.text = ""
                 cr.text = ""
                 pl = cl.paragraphs[0]
@@ -684,28 +661,39 @@ def generate_docx_report(session_data: dict) -> BytesIO:
                 _set_cell_vertical_alignment(cl, "center")
                 _set_cell_margins(cl)
                 pr = cr.paragraphs[0]
-                pr.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                pr.alignment = WD_ALIGN_PARAGRAPH.LEFT
                 rv = pr.add_run(value)
                 _set_run_font(rv, 10)
                 cr.width = Cm(10.5)
                 _set_cell_vertical_alignment(cr, "center")
                 _set_cell_margins(cr)
-            _set_table_borders(case_table, outer_sz="8", inner_sz="4",
+            _set_table_borders(meta_table, outer_sz="8", inner_sz="4",
                                outer_color=COLOR_DARK_BLUE, inner_color="D6E4F0")
 
-            # Conversation history if available
+            prompt_text = case.get("promptText", "")
+            model_resp = case.get("modelResponse", "")
+
+            _add_para(doc, "", space_before=8, line_spacing=1.0)
+            _add_para(doc, "攻击提示词：", size_pt=10.5, bold=True,
+                      space_before=6, space_after=4, keep_with_next=True)
+            _add_para(doc, prompt_text or "（空）", size_pt=10, space_after=8,
+                      first_line_indent=0.74)
+
+            _add_para(doc, "模型响应：", size_pt=10.5, bold=True,
+                      space_before=6, space_after=4, keep_with_next=True)
+            _add_para(doc, model_resp or "（空）", size_pt=10, space_after=8,
+                      first_line_indent=0.74)
+
             conv_history = case.get("conversationHistory")
             if conv_history:
-                _add_para(doc, "", space_before=8, line_spacing=1.0)
                 _add_para(doc, "攻击链路时序：", size_pt=10.5, bold=True,
                           space_before=6, space_after=4)
                 chain_rows = []
                 for ci, msg in enumerate(conv_history):
                     role_cn = "用户" if msg.get("role") == "user" else "模型"
                     content = msg.get("content", "")
-                    content_short = content[:50] + ("..." if len(content) > 50 else "")
-                    chain_rows.append([str(ci + 1), role_cn, content_short])
-                _create_styled_table(doc, ["轮次", "角色", "内容摘要"], chain_rows,
+                    chain_rows.append([str(ci + 1), role_cn, content])
+                _create_styled_table(doc, ["轮次", "角色", "内容"], chain_rows,
                                      col_widths=[1.5, 2, 10.5])
 
             _add_para(doc, "", space_before=12, line_spacing=1.0)
@@ -713,9 +701,9 @@ def generate_docx_report(session_data: dict) -> BytesIO:
     _add_page_break(doc)
 
     # ============================================================
-    # Chapter 5: Coverage Analysis
+    # Chapter 4: Coverage Analysis
     # ============================================================
-    _add_heading_styled(doc, "五、安全维度覆盖分析", level=1)
+    _add_heading_styled(doc, "四、安全维度覆盖分析", level=1)
 
     _add_heading_styled(doc, "维度覆盖统计", level=2)
     cov_headers = ["维度", "维度名称", "已覆盖子类数", "子类总数", "发现绕过数", "绕过率"]
@@ -774,9 +762,9 @@ def generate_docx_report(session_data: dict) -> BytesIO:
     _add_page_break(doc)
 
     # ============================================================
-    # Chapter 6: Conclusions & Recommendations
+    # Chapter 5: Conclusions & Recommendations
     # ============================================================
-    _add_heading_styled(doc, "六、评估结论与建议", level=1)
+    _add_heading_styled(doc, "五、评估结论与建议", level=1)
 
     _add_heading_styled(doc, "总结", level=2)
     if rate_val >= 35:
