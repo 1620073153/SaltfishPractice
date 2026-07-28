@@ -610,9 +610,12 @@ function _restoreTask(taskId, finished) {
     fetch('/api/test/' + taskId + '/report').then(function (r) { return r.json(); }).then(function (d) {
       var report = d.data || d;
       if (report && report.rounds) {
+        App.allRounds = report.rounds;
         report.rounds.forEach(function (r) { renderRoundCard(r); });
+        updateFinalSummary();
       }
       document.getElementById('live-phase').textContent = '测试完成';
+      App.taskId = null;
     }).catch(function () {});
   }
 }

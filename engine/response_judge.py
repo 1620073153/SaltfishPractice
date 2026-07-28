@@ -85,7 +85,7 @@ def judge_batch(results: list[dict], llm_client: LLMClient,
 
     to_judge = []
     for i, r in enumerate(results):
-        if r.get("status") in ("bypassed", "partial") and not r.get("_guardrail_blocked"):
+        if r.get("status") in ("bypassed", "partial", "needs_review") and not r.get("_guardrail_blocked"):
             to_judge.append((i, r))
 
     if not to_judge:

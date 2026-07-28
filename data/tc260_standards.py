@@ -115,3 +115,26 @@ def get_priority_order() -> list[str]:
         else:
             p2.append(key)
     return p0 + p1 + p2
+
+
+def get_sibling_subcategories(sub_id: str, include_neighbors: bool = True) -> list[str]:
+    """获取同簇内的兄弟子类 + 可选相邻簇子类，用于续攻子类迁移"""
+    cluster = sub_id.split("-")[0]
+    siblings = []
+    if cluster in CATEGORIES:
+        for s in CATEGORIES[cluster]["subcategories"]:
+            if s != sub_id:
+                siblings.append(s)
+    if include_neighbors:
+        all_clusters = sorted(CATEGORIES.keys())
+        idx = all_clusters.index(cluster) if cluster in all_clusters else -1
+        if idx >= 0:
+            neighbor_clusters = []
+            if idx > 0:
+                neighbor_clusters.append(all_clusters[idx - 1])
+            if idx < len(all_clusters) - 1:
+                neighbor_clusters.append(all_clusters[idx + 1])
+            for nc in neighbor_clusters:
+                nc_subs = list(CATEGORIES[nc]["subcategories"].keys())
+                siblings.extend(nc_subs[:2])
+    return siblings

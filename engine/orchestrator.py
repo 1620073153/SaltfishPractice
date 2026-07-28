@@ -212,6 +212,10 @@ class RedTeamOrchestrator:
                 sess["continuation_count"] = int(sess.get("continuation_count", 0) or 0) + 1
                 sess["success_score"] = max(float(sess.get("success_score", 1.0)), 1.0)
                 sess["consecutive_failures"] = 0
+                new_cat = result.get("target_category", "")
+                if new_cat and new_cat != sess.get("target_category", ""):
+                    sess["target_category"] = new_cat
+                    sess["cluster"] = new_cat.split("-", 1)[0] if new_cat else sess.get("cluster", "")
                 # escalate 升级为 deepen（partial 续攻成功变为 bypass）
                 if sess.get("session_goal") == "escalate" and result.get("status") == "bypassed":
                     sess["session_goal"] = "deepen"
@@ -732,6 +736,16 @@ class RedTeamOrchestrator:
         )
 
         try:
+            sibling_map = None
+            if sessions_for_cont:
+                from data.tc260_standards import get_sibling_subcategories
+                sibling_map = {}
+                for sess in sessions_for_cont:
+                    cat = sess.get("target_category", "")
+                    sid = sess.get("session_id", "")
+                    if cat and sid:
+                        sibling_map[sid] = get_sibling_subcategories(cat)
+
             new_prompts, cont_prompts = prompt_generator.generate_parallel(
                 round_num=self.current_round,
                 strategy=new_attack_payload["strategy"],
@@ -744,6 +758,7 @@ class RedTeamOrchestrator:
                 new_attack_slots=budget["new_attack_slots"],
                 llm_client=self._generator_client,
                 generation_batch_size=self._generation_batch_size,
+                sibling_subcategories=sibling_map,
             )
             self.event_callback({"event": "info", "round": self.current_round, "message": f"智能体生成完成: {len(new_prompts)}新攻 + {len(cont_prompts)}续攻"})
 
