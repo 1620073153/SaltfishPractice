@@ -302,7 +302,7 @@ def generate_prompts(
 
     prompts = _parse_prompt_list(raw_text)
 
-    min_required = min(3, batch_size)
+    min_required = min(2, batch_size)
     if len(prompts) < min_required:
         prompts = _parse_freeform_prompts(raw_text, strategy)
 

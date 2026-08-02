@@ -762,6 +762,14 @@ class RedTeamOrchestrator:
             )
             self.event_callback({"event": "info", "round": self.current_round, "message": f"智能体生成完成: {len(new_prompts)}新攻 + {len(cont_prompts)}续攻"})
 
+            # ── Q3 修复：新攻缺口检测 ──
+            expected_new = budget["new_attack_slots"]
+            actual_new = len(new_prompts)
+            if actual_new < expected_new:
+                gap = expected_new - actual_new
+                logger.warning(f"[Orchestrator] 新攻不足: 预期{expected_new}, 实际{actual_new}, 缺口{gap}")
+                self.event_callback({"event": "warning", "round": self.current_round, "message": f"新攻生成缺口{gap}条 (预期{expected_new}, 实际{actual_new})"})
+
             # ── Bug2 修复：续攻不足时补位给新攻 ──
             expected_cont_slots = budget["continuation_slots"]
             actual_cont_count = len(cont_prompts)
@@ -784,6 +792,33 @@ class RedTeamOrchestrator:
                     self.event_callback({"event": "info", "round": self.current_round, "message": f"续攻补位成功: 补充{len(backfill_prompts)}条新攻"})
                 except Exception as backfill_err:
                     logger.warning(f"[Orchestrator] 续攻补位失败(非致命): {backfill_err}")
+
+            # ── Q1 修复：总量缺口补位 ──
+            total_shortfall = self._effective_concurrency - len(new_prompts) - len(cont_prompts)
+            if total_shortfall > 0:
+                logger.warning(
+                    f"[Orchestrator] 总缺口 {total_shortfall} 条 "
+                    f"(目标{self._effective_concurrency}, "
+                    f"当前新攻{len(new_prompts)}+续攻{len(cont_prompts)})"
+                )
+                self.event_callback({"event": "info", "round": self.current_round, "message": f"检测到攻击缺口{total_shortfall}条，启动补位生成"})
+                try:
+                    backfill_new = prompt_generator.generate_prompts(
+                        round_num=self.current_round,
+                        strategy=new_attack_payload["strategy"],
+                        kb5_summary=new_attack_payload.get("kb5_summary", ""),
+                        history_feedback=new_attack_payload.get("history_feedback", ""),
+                        successful_prompts=new_attack_payload.get("successful_prompts"),
+                        timeout=300.0,
+                        settings_path=self._generator_settings,
+                        batch_size=total_shortfall,
+                        llm_client=self._generator_client,
+                    )
+                    new_prompts.extend(backfill_new)
+                    self.event_callback({"event": "info", "round": self.current_round, "message": f"缺口补位成功: 补充{len(backfill_new)}条新攻"})
+                except Exception as backfill_err:
+                    logger.warning(f"[Orchestrator] 缺口补位失败(非致命): {backfill_err}")
+                    self.event_callback({"event": "warning", "round": self.current_round, "message": f"缺口补位失败，本轮以{len(new_prompts)}+{len(cont_prompts)}条继续"})
 
         except Exception as e:
             logger.error(f"提示词生成器失败: {e}")
