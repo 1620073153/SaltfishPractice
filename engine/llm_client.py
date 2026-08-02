@@ -5,9 +5,12 @@
 """
 
 import requests
+import logging
 from typing import Optional
 
 from engine.rate_limiter import AdaptiveRateLimiter
+
+logger = logging.getLogger(__name__)
 
 
 class LLMClient:
@@ -100,8 +103,10 @@ class LLMClient:
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            "enable_thinking": False,
         }
+        # P1-1: deepseek 类模型不发 thinking 参数，其他模型保持 enable_thinking: False
+        if "deepseek" not in self.model.lower():
+            payload["enable_thinking"] = False
 
         last_error: Optional[Exception] = None
 
@@ -147,12 +152,24 @@ class LLMClient:
                 # 成功
                 self._limiter.report_success()
                 data = resp.json()
-                content = data["choices"][0]["message"].get("content")
-                if not content:
-                    content = data["choices"][0]["message"].get("reasoning_content", "")
-                if not content:
-                    raise ValueError("API 返回空结果: content 和 reasoning_content 均为空")
-                return content
+                message_obj = data["choices"][0]["message"]
+                content = message_obj.get("content")
+                reasoning_content = message_obj.get("reasoning_content", "")
+
+                # P0-3: 不再回退到 reasoning_content，防止思维链混入续攻 prompt
+                if content:
+                    return content
+                if reasoning_content:
+                    logger.warning(
+                        f"[LLMClient] content 为空但 reasoning_content 存在 "
+                        f"(model={self.model}, len={len(reasoning_content)}), "
+                        f"疑似思维链泄露，拒绝使用"
+                    )
+                    raise ValueError(
+                        f"API 返回空 content 但存在 reasoning_content "
+                        f"({len(reasoning_content)} chars), 疑似思维链泄露"
+                    )
+                raise ValueError("API 返回空结果: content 和 reasoning_content 均为空")
 
             except requests.exceptions.Timeout:
                 self._limiter.report_error()

@@ -597,16 +597,22 @@ def _extract_single_continuation(raw: str) -> str:
     if text.startswith('"') and text.endswith('"'):
         text = text[1:-1]
 
+    # P1-2: 防御性剥离残留的 [TARGET: Ax-y] 标签
+    text = re.sub(r'\[TARGET:\s*A\d+-[a-z]\]\s*', '', text).strip()
+
     return text
 
 
 def _extract_target_category(raw: str) -> tuple[str, str]:
-    """从 LLM 输出首行提取 [TARGET: Ax-y] 标记。
+    """从 LLM 输出中提取 [TARGET: Ax-y] 标记。
     返回 (target_category, cleaned_text)。未找到则返回 ("", original_text)。"""
     text = raw.strip()
-    m = re.match(r'\[TARGET:\s*(A\d+-[a-z])\]\s*\n?', text)
+    # P1-2: re.match → re.search，支持标签出现在非首行位置
+    m = re.search(r'\[TARGET:\s*(A\d+-[a-z])\]\s*\n?', text)
     if m:
-        return m.group(1), text[m.end():].strip()
+        # 完整剥离标签，拼接标签前后的文本
+        cleaned = (text[:m.start()] + text[m.end():]).strip()
+        return m.group(1), cleaned
     return "", text
 
 
@@ -775,7 +781,7 @@ def _parse_continuations(raw: str, active_sessions: list[dict]) -> list[dict]:
     return results
 
 
-def _split_strategy_for_workers(strategy: dict, new_attack_slots: int, max_per_worker: int = 10) -> list[dict]:
+def _split_strategy_for_workers(strategy: dict, new_attack_slots: int, max_per_worker: int = 3) -> list[dict]:
     """将策略拆分为多个 worker 的子策略，每个最多生成 max_per_worker 条。
     子类切片不重叠，concept/method 轮转分配保证 worker 间差异化。"""
     if new_attack_slots <= max_per_worker:
@@ -817,7 +823,7 @@ def generate_parallel(
     settings_path: Optional[str] = None,
     new_attack_slots: int = 10,
     llm_client=None,
-    generation_batch_size: int = 10,
+    generation_batch_size: int = 3,
     sibling_subcategories: dict[str, list[str]] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """并行执行 Agent1(新攻) + Agent-续攻，返回 (new_prompts, continuation_prompts)。
@@ -882,6 +888,17 @@ def generate_parallel(
 
     if len(worker_specs) > 1:
         logger.info(f"[Generator] 多路生成完成: {len(worker_specs)} workers, 成功 {len(new_prompts)} 条新攻")
+
+    # P1-3: 多 worker 合并后统一重新编号，消除 prompt_id 重复
+    if new_prompts:
+        seen_ids = set()
+        for idx, p in enumerate(new_prompts):
+            new_id = f"p{idx + 1:02d}"
+            old_id = p.get("prompt_id", "")
+            if old_id in seen_ids:
+                logger.debug(f"[Generator] 重复 prompt_id '{old_id}' 重编号为 '{new_id}'")
+            seen_ids.add(new_id)
+            p["prompt_id"] = new_id
 
     if not new_prompts and not cont_prompts:
         error_parts = []
